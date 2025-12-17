@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <!-- Upload + summary row -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Upload card -->
+    <div class="lg:col-span-1">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg shadow-slate-900/50">
+        <h3 class="text-sm font-semibold mb-2">Upload invoice PDF</h3>
+        <p class="text-xs text-slate-400 mb-4">
+          We will OCR the PDF, parse key values and persist them into Oracle.
+        </p>
+        <form
+          id="upload-form"
+          action="{{ url_for('upload_invoice') }}"
+          method="post"
+          enctype="multipart/form-data"
+          class="space-y-3"
+        >
+          <label
+            class="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-4 py-6 text-center text-xs cursor-pointer hover:border-slate-500 hover:bg-slate-900 transition"
+          >
+            <span class="font-medium text-slate-100">
+              Click to choose a PDF
+            </span>
+            <span class="text-slate-500">
+              or drag &amp; drop here (max few MB)
+            </span>
+            <input
+              id="file-input"
+              type="file"
+              name="file"
+              accept="application/pdf"
+              class="hidden"
+            />
+          </label>
+          <p class="text-[11px] text-slate-500" id="file-name-label">
+            No file selected
+          </p>
+
+          <button
+            type="submit"
+            class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-900 shadow-sm hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:ring-offset-2 focus:ring-offset-slate-950"
+          >
+            <span id="upload-button-text">Upload &amp; Process</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- High-level metrics -->
+    <div class="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3 text-xs">
+        <p class="text-slate-400">Invoices</p>
+        <p class="mt-1 text-lg font-semibold">
+          {{ invoices|length }}
+        </p>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3 text-xs">
+        <p class="text-slate-400">Latest currency</p>
+        <p class="mt-1 text-lg font-semibold">
+          {% if invoices and invoices[0].currency %}{{ invoices[0].currency }}{% else %}-{% endif %}
+        </p>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3 text-xs">
+        <p class="text-slate-400">Latest subtotal</p>
+        <p class="mt-1 text-lg font-semibold">
+          {% if invoices and invoices[0].subtotal is not none %}{{ '{:,.2f}'.format(invoices[0].subtotal) }}{% else %}-{% endif %}
+        </p>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3 text-xs">
+        <p class="text-slate-400">Latest balance due</p>
+        <p class="mt-1 text-lg font-semibold">
+          {% if invoices and invoices[0].balance_due is not none %}{{ '{:,.2f}'.format(invoices[0].balance_due) }}{% else %}-{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invoices table + detail -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+    <!-- Invoices list -->
+    <div class="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 overflow-hidden">
+      <div class="flex items-center justify-between mb 3 mb-3">
+        <h3 class="text-sm font-semibold">Recent invoices</h3>
+        <span class="text-[11px] text-slate-500">
+          Showing latest {{ invoices|length }} records
+        </span>
+      </div>
+      <div class="overflow-x-auto text-xs">
+        <table class="min-w-full border-separate border-spacing-y-1">
+          <thead class="text-[11px] uppercase text-slate-500">
+            <tr>
+              <th class="text-left px-3 py-1.5">Invoice #</th>
+              <th class="text-left px-3 py-1.5">Date</th>
+              <th class="text-right px-3 py-1.5">Subtotal</th>
+              <th class="text-right px-3 py-1.5">Tax</th>
+              <th class="text-right px-3 py-1.5">Balance</th>
+              <th class="text-right px-3 py-1.5">Total</th>
+              <th class="text-right px-3 py-1.5"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inv in invoices %}
+              <tr
+                class="rounded-xl bg-slate-900/80 hover:bg-slate-800/80 transition"
+              >
+                <td
+                  class="px-3 py-2 cursor-pointer"
+                  onclick="window.location='{{ url_for('dashboard') }}?invoice={{ inv.invoice_number }}'"
+                >
+                  <div class="font-medium text-xs">
+                    {{ inv.invoice_number }}
+                  </div>
+                  <div class="text-[11px] text-slate-500">
+                    {{ inv.currency or '' }}
+                  </div>
+                </td>
+                <td
+                  class="px-3 py-2 text-[11px] text-slate-300 cursor-pointer"
+                  onclick="window.location='{{ url_for('dashboard') }}?invoice={{ inv.invoice_number }}'"
+                >
+                  {{ inv.invoice_d }}
+                </td>
+                <td
+                  class="px-3 py-2 text-right cursor-pointer"
+                  onclick="window.location='{{ url_for('dashboard') }}?invoice={{ inv.invoice_number }}'"
+                >
+                  {% if inv.subtotal is not none %}{{ '{:,.2f}'.format(inv.subtotal) }}{% else %}-{% endif %}
+                </td>
+                <td
+                  class="px-3 py-2 text-right cursor-pointer"
+                  onclick="window.location='{{ url_for('dashboard') }}?invoice={{ inv.invoice_number }}'"
+                >
+                  {% if inv.total_tax is not none %}{{ '{:,.2f}'.format(inv.total_tax) }}{% else %}-{% endif %}
+                </td>
+                <td
+                  class="px-3 py-2 text-right cursor-pointer"
+                  onclick="window.location='{{ url_for('dashboard') }}?invoice={{ inv.invoice_number }}'"
+                >
+                  {% if inv.balance_due is not none %}{{ '{:,.2f}'.format(inv.balance_due) }}{% else %}-{% endif %}
+                </td>
+                <td
+                  class="px-3 py-2 text-right cursor-pointer"
+                  onclick="window.location='{{ url_for('dashboard') }}?invoice={{ inv.invoice_number }}'"
+                >
+                  {% if inv.total_amount is not none %}{{ '{:,.2f}'.format(inv.total_amount) }}{% else %}-{% endif %}
+                </td>
+                <td class="px-3 py-2 text-right">
+                  <form
+                    action="{{ url_for('delete_invoice_route', invoice_number=inv.invoice_number) }}"
+                    method="post"
+                    onsubmit="return confirm('Delete invoice {{ inv.invoice_number }} and all its line items?');"
+                  >
+                    <button
+                      type="submit"
+                      class="inline-flex items-center rounded-lg border border-rose-500/60 bg-rose-500/10 px-2 py-1 text-[11px] font-medium text-rose-200 hover:bg-rose-500/20"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6" class="px-3 py-6 text-center text-slate-500">
+                  No invoices yet. Upload a PDF to get started.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Selected invoice detail -->
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-xs">
+      <h3 class="text-sm font-semibold mb-2">Invoice details</h3>
+
+      {% if invoice_detail %}
+        <div class="mb-3 space-y-1">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-[11px] uppercase text-slate-500">Invoice</div>
+              <div class="text-xs font-semibold">
+                {{ invoice_detail.invoice_number }} &middot; {{ invoice_detail.status or 'UNPAID' }}
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-[11px] uppercase text-slate-500">Date</div>
+              <div class="text-xs text-slate-300">
+                {{ invoice_detail.invoice_d }}
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-2 mt-2">
+            <div>
+              <div class="text-[11px] uppercase text-slate-500">Supplier</div>
+              <div class="text-xs text-slate-200">
+                {{ invoice_detail.supplier_name or '-' }}
+              </div>
+              {% if invoice_detail.supplier_address %}
+                <div class="text-[11px] text-slate-500">
+                  {{ invoice_detail.supplier_address }}
+                </div>
+              {% endif %}
+            </div>
+            <div>
+              <div class="text-[11px] uppercase text-slate-500">Customer</div>
+              <div class="text-xs text-slate-200">
+                {{ invoice_detail.customer_name or '-' }}
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <div>
+              <div class="text-[11px] uppercase text-slate-500">Payment terms</div>
+              <div class="text-xs text-slate-200">
+                {{ invoice_detail.payment_terms or '-' }}
+              </div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase text-slate-500">Bank</div>
+              <div class="text-xs text-slate-200">
+                {{ invoice_detail.bank_name or '-' }}
+                {% if invoice_detail.branch %} ({{ invoice_detail.branch }}){% endif %}
+              </div>
+              {% if invoice_detail.account_number %}
+                <div class="text-[11px] text-slate-500">
+                  AC: {{ invoice_detail.account_number }}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <div>
+              <div class="text-[11px] uppercase text-slate-500">Subtotal</div>
+              <div class="text-xs">
+                {% if invoice_detail.subtotal is not none %}{{ '{:,.2f}'.format(invoice_detail.subtotal) }}{% else %}-{% endif %}
+              </div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase text-slate-500">Discount</div>
+              <div class="text-xs">
+                {% if invoice_detail.discount is not none %}{{ '{:,.2f}'.format(invoice_detail.discount) }}{% else %}-{% endif %}
+              </div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase text-slate-500">Tax</div>
+              <div class="text-xs">
+                {% if invoice_detail.tax_rate is not none %}Rate: {{ invoice_detail.tax_rate }}%{% else %}Rate: -{% endif %}
+                <br />
+                {% if invoice_detail.total_tax is not none %}Amt: {{ '{:,.2f}'.format(invoice_detail.total_tax) }}{% else %}Amt: -{% endif %}
+              </div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase text-slate-500">Total / Balance</div>
+              <div class="text-xs">
+                Total:
+                {% if invoice_detail.total_amount is not none %}{{ '{:,.2f}'.format(invoice_detail.total_amount) }}{% else %}-{% endif %}
+                <br />
+                Balance:
+                {% if invoice_detail.balance_due is not none %}{{ '{:,.2f}'.format(invoice_detail.balance_due) }}{% else %}-{% endif %}
+              </div>
+            </div>
+          </div>
+
+          {% if invoice_detail.payment_instructions %}
+            <div class="mt-2">
+              <div class="text-[11px] uppercase text-slate-500">Instructions</div>
+              <div class="text-[11px] text-slate-300">
+                {{ invoice_detail.payment_instructions }}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="border-t border-slate-800 mt-3 pt-2">
+          {% if selected_items %}
+            <p class="text-[11px] text-slate-400 mb-2">
+              Line items ({{ selected_items|length }})
+            </p>
+            <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+              {% for item in selected_items %}
+                <div class="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+                  <div class="font-medium text-[11px] mb-1">
+                    {{ item.description }}
+                  </div>
+                  <div class="flex justify-between text-[11px] text-slate-400">
+                    <span>Qty: {{ item.quantity }}</span>
+                    <span>Unit: {{ '{:,.2f}'.format(item.unit_price) }}</span>
+                    <span>Total: {{ '{:,.2f}'.format(item.line_total) }}</span>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-[11px] text-slate-500">
+              No line items found for {{ selected_invoice_number }}.
+            </p>
+          {% endif %}
+        </div>
+      {% elif selected_invoice_number %}
+        <p class="text-[11px] text-slate-500">
+          No details found for {{ selected_invoice_number }}.
+        </p>
+      {% else %}
+        <p class="text-[11px] text-slate-500">
+          Select an invoice from the table to view its details and line items.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const fileInput = document.getElementById("file-input");
+      const fileNameLabel = document.getElementById("file-name-label");
+      const uploadForm = document.getElementById("upload-form");
+      const uploadButtonText = document.getElementById("upload-button-text");
+
+      if (fileInput && fileNameLabel) {
+        fileInput.addEventListener("change", function () {
+          const file = this.files && this.files[0];
+          if (file) {
+            fileNameLabel.textContent = `Selected: ${file.name}`;
+          } else {
+            fileNameLabel.textContent = "No file selected";
+          }
+        });
+      }
+
+      if (uploadForm && uploadButtonText) {
+        uploadForm.addEventListener("submit", function () {
+          uploadButtonText.textContent = "Uploading & processing...";
+        });
+      }
+    })();
+  </script>
+{% endblock %}
+

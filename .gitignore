@@ -1,0 +1,33 @@
+# Python bytecode / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+
+# IDE / editor metadata
+.vscode/
+.idea/
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+
+# Cursor / local tooling
+.cursor/
+
+# Environment / secrets
+.env
+.env.*
+
+# Logs
+*.log
+
+# Local data outputs (can be regenerated)
+data/output/
+
+# Flask debug files
+instance/
+
+
